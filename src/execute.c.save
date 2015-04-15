@@ -178,21 +178,21 @@ void ctrl_C(){
     
 
 	//修改前台作业的状态及相应的命令格式，并打印提示信息
-    // strcpy(now->state, STOPPED); 
-    // now->cmd[strlen(now->cmd)] = '&';
-    // now->cmd[strlen(now->cmd) + 1] = '\0';
-    // printf("[%d]\t%s\t\t%s\n", now->pid, now->state, now->cmd);
+    strcpy(now->state, STOPPED); 
+    now->cmd[strlen(now->cmd)] = '&';
+    now->cmd[strlen(now->cmd) + 1] = '\0';
+    printf("[%d]\t%s\t\t%s\n", now->pid, now->state, now->cmd);
     
 
 	//发送SIGSTOP信号给正在前台运作的工作，将其停止
-    kill(fgPid, SIGKILL);
+    kill(fgPid, SIGSTOP);
     fgPid = 0;
 }
 
 /*组合键命令ctrl+z*/
 void ctrl_Z(){
     Job *now = NULL;
-    printf("HHHHHH");
+    
     if(fgPid == 0){ //前台没有作业则直接返回
         return;
     }
@@ -236,7 +236,7 @@ void fg_exec(int pid){
         printf("pid为7%d 的作业不存在！\n", pid);
         return;
     }
- 
+signal(SIGTSTP, ctrl_Z); //设置signal信号，为下一次按下组合键Ctrl+Z做准备
     //记录前台作业的pid，修改对应作业状态
     fgPid = now->pid;
     strcpy(now->state, RUNNING);
@@ -244,7 +244,7 @@ void fg_exec(int pid){
     signal(SIGTSTP, ctrl_Z); //设置signal信号，为下一次按下组合键Ctrl+Z做准备
     i = strlen(now->cmd) - 1;
     while(i >= 0 && now->cmd[i] != '&')
-                i--;
+		i--;
     now->cmd[i] = '\0';
     
     printf("%s\n", now->cmd);
@@ -354,7 +354,7 @@ void init(){
     action.sa_flags = SA_SIGINFO;
     sigaction(SIGCHLD, &action, NULL);
     signal(SIGTSTP, ctrl_Z);
-    signal(SIGINT, ctrl_C);
+    signal(SIGTSTP, ctrl_C);
 }
 
 /*******************************************************
@@ -589,7 +589,7 @@ void execSimpleCmd(SimpleCmd *cmd){
         } while(i != (history.end + 1)%HISTORY_LEN);
     } else if (strcmp(cmd->args[0], "jobs") == 0) { //jobs命令
         if(head == NULL){
-            printf("尚无任何作业~~~\n");
+            printf("尚无任何作业\n");
         } else {
             printf("index\tpid\tstate\t\tcommand\n");
             for(i = 1, now = head; now != NULL; now = now->next, i++){
