@@ -89,7 +89,10 @@
 # define YYERROR_VERBOSE 0
 #endif
 
-
+/* In a future release of Bison, this section will be replaced
+   by #include "bison.tab.h".  */
+#ifndef YY_YY_BISON_TAB_H_INCLUDED
+# define YY_YY_BISON_TAB_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -119,11 +122,11 @@ extern YYSTYPE yylval;
 
 int yyparse (void);
 
-
+#endif /* !YY_YY_BISON_TAB_H_INCLUDED  */
 
 /* Copy the second part of user declarations.  */
 
-#line 127 "bison.tab.c" /* yacc.c:358  */
+#line 130 "bison.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1195,11 +1198,11 @@ yyreduce:
         case 3:
 #line 14 "bison.y" /* yacc.c:1646  */
     {   execute();  commandDone = 1;   }
-#line 1199 "bison.tab.c" /* yacc.c:1646  */
+#line 1202 "bison.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1203 "bison.tab.c" /* yacc.c:1646  */
+#line 1206 "bison.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1433,7 +1436,7 @@ yyreturn:
 /****************************************************************
                   词法分析函数
 ****************************************************************/
-int yylex(){
+/*int yylex(){
     //这个函数用来检查inputBuff是否满足lex的定义，实际上并不进行任何操作，初期可略过不看
     int flag;
     char c;
@@ -1471,7 +1474,7 @@ int yylex(){
         return 0;
     }
 }
-
+*/
 /****************************************************************
                   错误信息执行函数
 ****************************************************************/
@@ -1490,7 +1493,7 @@ int main(int argc, char** argv) {
     init(); //初始化环境
     commandDone = 0;
     
-    printf("yourname@computer:%s$ ", get_current_dir_name()); //打印提示符信息
+    printf("531@computer:%s$ ", get_current_dir_name()); //打印提示符信息
 
     while(1){
         i = 0;
@@ -1501,7 +1504,7 @@ int main(int argc, char** argv) {
 
         len = i;
         offset = 0;
-        
+        yy_scan_string(inputBuff);
         yyparse(); //调用语法分析函数，该函数由yylex()提供当前输入的单词符号
 
         if(commandDone == 1){ //命令已经执行完成后，添加历史记录信息
@@ -1509,7 +1512,7 @@ int main(int argc, char** argv) {
             addHistory(inputBuff);
         }
         
-        printf("yourname@computer:%s$ ", get_current_dir_name()); //打印提示符信息
+        printf("531@computer:%s$ ", get_current_dir_name()); //打印提示符信息
      }
 
     return (EXIT_SUCCESS);

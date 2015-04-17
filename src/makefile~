@@ -4,7 +4,7 @@ bison.tab.o : bison global.h
 	cc -c bison.tab.c lex.yy.c -ggdb
 execute.o : execute.c global.h
 	cc -c execute.c -ggdb
-bison : flex.l bison.y
+bison : analysis.l bison.y
 	bison -d bison.y
 	flex flex.l
 clean :
