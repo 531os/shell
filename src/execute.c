@@ -150,7 +150,7 @@ void rmJob(int sig, siginfo_t *sip, void* noused){
     }else{
         last->next = now->next;
     }
-
+    wait(NULL);
     free(now);
 }
 
@@ -163,7 +163,7 @@ void ctrl_C(){
     }
 
     //SIGCHLD信号产生自ctrl+c
-    ingnore = 1;
+    ingnore = 0;
 
 
 	now = head;
@@ -192,30 +192,24 @@ void ctrl_C(){
 /*组合键命令ctrl+z*/
 void ctrl_Z(){
     Job *now = NULL;
-    printf("HHHHHH");
     if(fgPid == 0){ //前台没有作业则直接返回
         return;
     }
-
     //SIGCHLD信号产生自ctrl+z
     ingnore = 1;
-
 	now = head;
 	while(now != NULL && now->pid != fgPid)
 		now = now->next;
-
     if(now == NULL){ //未找到前台作业，则根据fgPid添加前台作业
         now = addJob(fgPid);
     }
-
 	//修改前台作业的状态及相应的命令格式，并打印提示信息
 	int len;
-	len=strlen(now->cmd);
+    len=strlen(now->cmd);
     strcpy(now->state, STOPPED);
     now->cmd[len] = '&';
     now->cmd[len+ 1] = '\0';
     printf("[%d]\t%s\t\t%s\n", now->pid, now->state, now->cmd);
-
 	//发送SIGSTOP信号给正在前台运作的工作，将其停止
     kill(fgPid, SIGSTOP);
     fgPid = 0;
@@ -251,7 +245,7 @@ void fg_exec(int pid){
 
     printf("%s\n", now->cmd);
     kill(now->pid, SIGCONT); //向对象作业发送SIGCONT信号，使其运行
-    if(fgPid!=0)
+   //   if(fgPid!=0)
     waitpid(fgPid, NULL, 0); //父进程等待前台进程的运行
 }
 
@@ -551,6 +545,10 @@ void execOuterCmd(SimpleCmd *cmd){
         }
 
         if(pid == 0){ //子进程
+		sigset_t new;
+		sigaddset(&new,SIGINT);
+		sigaddset(&new,SIGTSTP);
+		sigprocmask(SIG_BLOCK,&new,NULL);
             if(cmd->input != NULL){ //存在输入重定向
                 if((pipeIn = open(cmd->input, O_RDONLY, S_IRUSR|S_IWUSR)) == -1){
                     printf("不能打开文件 %s！\n", cmd->input);
@@ -574,6 +572,7 @@ void execOuterCmd(SimpleCmd *cmd){
             }
 
             if(cmd->isBack){ //若是后台运行命令，等待父进程增加作业
+ 		kill(getppid(),SIGUSR1);
                 signal(SIGUSR1, setGoon); //收到信号，setGoon函数将goon置1，以跳出下面的循环
                 while(goon == 0) ; //等待父进程SIGUSR1信号，表示作业已加到链表中
                 goon = 0; //置0，为下一命令做准备
@@ -592,7 +591,9 @@ void execOuterCmd(SimpleCmd *cmd){
             if(cmd ->isBack){ //后台命令
                 fgPid = 0; //pid置0，为下一命令做准备
                 addJob(pid); //增加新的作业
-                sleep(1);
+		signal(SIGUSR1,setGoon);
+		while(goon==0);
+		goon=0;
                 kill(pid, SIGUSR1); //子进程发信号，表示作业已加入
 
                 //等待子进程输出
@@ -601,6 +602,7 @@ void execOuterCmd(SimpleCmd *cmd){
                 goon = 0;
             }else{ //非后台命令
                 fgPid = pid;
+		addJob(fgPid);
                 waitpid(pid, NULL, 0);
             }
 		}
