@@ -150,7 +150,8 @@ void rmJob(int sig, siginfo_t *sip, void* noused){
     }else{
         last->next = now->next;
     }
-    //wait(NULL);
+    if(fgPid!=pid)
+    wait(NULL);
     free(now);
 }
 
