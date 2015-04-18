@@ -611,6 +611,102 @@ void execOuterCmd(SimpleCmd *cmd){
         printf("找不到命令 15%s\n", inputBuff);
     }
 }
+/* 管道命令*/
+
+void usepipe(SimpleCmd *pipecmd[100], int pipenum){
+       int pipeIn, pipeOut,i=0;
+       int pipe_fd[100][2];
+       int status=0;
+       pid_t pid_child[100];
+       if (pipe(pipe_fd[0])<0){
+                      printf("创建管道失败\n");
+                      return;
+        }
+        if ((pid_child[0]=fork()) < 0){
+                     perror("fork failed");
+                     return;
+        }
+        if  (!pid_child[0]){
+                 close(pipe_fd[i][0]);
+                 dup2(pipe_fd[i][1],1);
+                 close(pipe_fd[i][1]);
+                 if(pipecmd[i]->input != NULL) {
+                              if((pipeIn = open(pipecmd[i]->input, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR)) == -1){
+                                                   printf("打不开文件 %s！\n", pipecmd[i]->output);
+                                                  return ;
+                               }
+                              if(dup2(pipeIn, 0) == -1){
+                                                printf("输出重定向错误！\n");
+                                                return;
+                               }
+                   }
+                  if(exists(pipecmd[i]->args[0])) {
+                                  if(execve(cmdBuff, pipecmd[i]->args,NULL) < 0) {
+                                                  printf("execv failed!\n");
+                                                  return;
+                                    }
+                 }
+        }
+        //execOuterCmd(pipecmd[0]);
+       close(pipe_fd[0][1]);
+       waitpid(pid_child[0],&status,0);
+       i++;
+      while (i<pipenum-1){
+              if (pipe(pipe_fd[i])<0){
+                      printf("创建管道失败\n");
+                      return;
+              }
+             if ((pid_child[i]=fork()) < 0){
+                     perror("fork failed");
+                     return;
+             }
+            if (!pid_child[i]){
+                      close(pipe_fd[i-1][1]);
+                      dup2(pipe_fd[i-1][0],0);
+                      close(pipe_fd[i-1][0]);
+                      dup2(pipe_fd[i][1],1);
+                      close(pipe_fd[i][1]);
+                      if(exists(pipecmd[i]->args[0])) {
+                                  if(execve(cmdBuff, pipecmd[i]->args,NULL) < 0) {
+                                                  printf("execv failed!\n");
+                                                  return;
+                                    }
+                 }
+            }
+            close(pipe_fd[i][1]);
+            waitpid(pid_child[i],&status,0);
+            i++;
+       }
+       if  ((pid_child[i]=fork())<0){
+                 perror("fork failed");
+                return;
+       }
+       if (!(pid_child[i]=fork())){
+               close(pipe_fd[i-1][1]);
+               dup2(pipe_fd[i-1][0],0);
+               close(pipe_fd[i-1][0]);
+               if(pipecmd[i]->output != NULL) {
+                              if((pipeOut = open(pipecmd[i]->output, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR)) == -1){
+                                                   printf("打不开文件 %s！\n", pipecmd[i]->output);
+                                                  return ;
+                               }
+                              if(dup2(pipeOut, 1) == -1){
+                                                printf("输出重定向错误！\n");
+                                                return;
+                               }
+                   }
+                  if(exists(pipecmd[i]->args[0])) {
+                                  if(execve(cmdBuff, pipecmd[i]->args,NULL) < 0) {
+                                                  printf("execv failed!\n");
+                                                  return;
+                                    }
+                 }
+                //execOuterCmd(pipecmd[0]);
+       }
+       close(pipe_fd[i-1][0]);
+       waitpid(pid_child[i],&status,0);
+       return;
+}
 
 /*执行命令*/
 void execSimpleCmd(SimpleCmd *cmd){
@@ -684,6 +780,30 @@ void execSimpleCmd(SimpleCmd *cmd){
                      命令执行接口
 ********************************************************/
 void execute(){
-    SimpleCmd *cmd = handleSimpleCmdStr(0, strlen(inputBuff));
-    execSimpleCmd(cmd);
+    int i=0,j=0,pipenum=0,pipe[100],l;   //管道指令数
+    SimpleCmd *pipecmd[100];     //记录可能的管道链接指令
+    while   (i<strlen(inputBuff)){
+           if (inputBuff[i]=='|')   { pipe[pipenum]=i;  pipenum++; }
+           i++;
+    }
+    i=0;
+    pipenum++;
+    if (pipenum>1){
+         while (j<pipenum-1){
+                SimpleCmd *cmd = handleSimpleCmdStr(i,pipe[j]-1);        //jie xi
+                pipecmd[j]=cmd;                                                                 //ji lu
+               // for (l=i;l<=pipe[j];l++)  printf("%c",inputBuff[l]);
+               // printf("\n");
+                i=pipe[j]+1;                                                                            //xia yi tiaop qi shi
+                j++;
+         }
+         SimpleCmd *cmd = handleSimpleCmdStr(i,strlen(inputBuff));   //zui hou yi tiao
+         pipecmd[j]=cmd;
+         //for (l=i;strlen(inputBuff);l++)  printf("%c",inputBuff[l]);
+         usepipe(pipecmd,pipenum);
+    }
+    else{
+         SimpleCmd *cmd = handleSimpleCmdStr(0,strlen(inputBuff));
+         execSimpleCmd(cmd);                                                                        //zheng chang zhi xing
+    }
 }

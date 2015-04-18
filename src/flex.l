@@ -5,6 +5,5 @@
 "<" {return '<';}
 ">" {return '>';}
 "&" {return '&';}
-"|" {return '|';}
 [^&\t|\n<>]+ {return STRING;}
 %%
